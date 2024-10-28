@@ -449,7 +449,7 @@ impl WebSocketService {
         'subs: for (subid, filters) in self.subscriptions.iter() {
             for filter in filters.iter() {
                 if filter.event_matches(event)?
-                    && nostr::screen_outgoing_event(event, &event_flags, authorized_user)
+                    && nostr::screen_outgoing_event(event, &event_flags, authorized_user, self.user)
                 {
                     let message = NostrReply::Event(subid, event);
                     // note, this is not currently counted in throttling
@@ -625,9 +625,53 @@ pub fn setup_store(config: &Config) -> Result<Store, Error> {
             "approved-events",  // id.as_slice() -> u8(bool)
             "approved-pubkeys", // pubkey.as_slice() -> u8(bool)
             "ip_data",          // HashedIp.0 -> IpData
+            "pk_data",          // Pubkey -> usize
         ],
     )?;
     Ok(store)
+}
+
+/// Get usize from storage about this remote Pubkey
+pub fn get_pk_data(store: &Store, pk: Pubkey) -> Result<usize, Error> {
+  let pk_data = store
+      .extra_table("pk_data")
+      .ok_or(Into::<Error>::into(ChorusError::MissingTable("pk_data")))?;
+  let txn = store.read_txn()?;
+  let key = &pk.to_vec();
+  let bytes = match pk_data.get(&txn, key)? {
+      Some(b) => b,
+      None => return Ok(Default::default()),
+  };
+  Ok(usize::read_from_buffer(bytes)?)
+}
+
+/// Get usize in storage about this remote Pubkey
+pub fn update_pk_data(store: &Store, pk: Pubkey, data: &usize) -> Result<(), Error> {
+  let pk_data = store
+      .extra_table("pk_data")
+      .ok_or(Into::<Error>::into(ChorusError::MissingTable("pk_data")))?;
+  let mut txn = store.write_txn()?;
+  let key = &pk.to_vec();
+  let bytes = data.write_to_vec()?;
+  pk_data.put(&mut txn, key, &bytes)?;
+  txn.commit()?;
+  Ok(())
+}
+
+/// Dump all usize from storage
+pub fn dump_pk_data(store: &Store) -> Result<Vec<(Pubkey, usize)>, Error> {
+  let pk_data = store
+      .extra_table("pk_data")
+      .ok_or(Into::<Error>::into(ChorusError::MissingTable("pk_data")))?;
+  let txn = store.read_txn()?;
+  let mut output: Vec<(Pubkey, usize)> = Vec::new();
+  for i in pk_data.iter(&txn)? {
+      let (key, val) = i?;
+      let pubkey = Pubkey::from_bytes(key.try_into().unwrap());
+      let data = usize::read_from_buffer(val)?;
+      output.push((pubkey, data));
+  }
+  Ok(output)
 }
 
 /// Get IpData from storage about this remote HashedIp

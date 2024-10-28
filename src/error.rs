@@ -28,6 +28,9 @@ pub enum ChorusError {
     // Auth required
     AuthRequired,
 
+    // Auth required for tracking
+    AuthRequiredForTracking,
+
     // Bad request
     BadRequest(&'static str),
 
@@ -160,6 +163,7 @@ impl std::fmt::Display for ChorusError {
         match self {
             ChorusError::AuthFailure(s) => write!(f, "AUTH failure: {s}"),
             ChorusError::AuthRequired => write!(f, "AUTH required"),
+            ChorusError::AuthRequiredForTracking => write!(f, "AUTH required"),
             ChorusError::BadRequest(s) => write!(f, "Bad Request: {s}"),
             ChorusError::BadRealIpHeader(s) => write!(f, "Bad X-Real-Ip header: {s}"),
             ChorusError::BadRealIpHeaderCharacters => {
@@ -247,6 +251,7 @@ impl ChorusError {
         match self {
             ChorusError::AuthFailure(_) => 0.25,
             ChorusError::AuthRequired => 0.0,
+            ChorusError::AuthRequiredForTracking => 0.0,
             ChorusError::BadRequest(_) => 0.1,
             ChorusError::BadRealIpHeader(_) => 0.0,
             ChorusError::BadRealIpHeaderCharacters => 0.0,

@@ -6,6 +6,7 @@ use hyper_tungstenite::tungstenite::Message;
 use pocket_types::json::{eat_whitespace, json_unescape, verify_char};
 use pocket_types::{Event, Filter, Kind, OwnedFilter, Pubkey, Time};
 use url::Url;
+use crate::{get_pk_data, update_pk_data};
 
 impl WebSocketService {
     pub async fn handle_nostr_message(&mut self, msg: &str) -> Result<(), Error> {
@@ -141,7 +142,7 @@ impl WebSocketService {
             for filter in filters.iter() {
                 let screen = |event: &Event| {
                     let event_flags = event_flags(event, &user);
-                    screen_outgoing_event(event, &event_flags, authorized_user)
+                    screen_outgoing_event(event, &event_flags, authorized_user, user)
                 };
                 let filter_events = {
                     let config = &*GLOBALS.config.read();
@@ -186,6 +187,7 @@ impl WebSocketService {
 
     pub async fn event(&mut self, msg: &str, mut inpos: usize) -> Result<(), Error> {
         const PERSONAL_MSG: &str = "this personal relay only accepts events related to its users";
+        const TRACKING_MSG: &str = "this relay tracks usage";
 
         let input = msg.as_bytes();
 
@@ -199,6 +201,12 @@ impl WebSocketService {
 
         if let Err(e) = self.event_inner().await {
             let reply = match e.inner {
+                ChorusError::AuthRequiredForTracking => NostrReply::Ok(
+                    id,
+                    false,
+                    NostrReplyPrefix::AuthRequired,
+                    TRACKING_MSG.to_owned(),
+                ),
                 ChorusError::AuthRequired => NostrReply::Ok(
                     id,
                     false,
@@ -270,7 +278,7 @@ impl WebSocketService {
         }
 
         // Screen the event to see if we are willing to accept it
-        if !screen_incoming_event(event, event_flags, authorized_user).await? {
+        if !screen_incoming_event(event, event_flags, authorized_user, user).await? {
             if self.user.is_some() {
                 return Err(ChorusError::Restricted.into());
             } else {
@@ -410,7 +418,69 @@ impl WebSocketService {
     }
 }
 
-async fn screen_incoming_event(
+pub fn to_hex_string(bytes: Vec<u8>) -> String {
+  let strs: Vec<String> = bytes.iter()
+                               .map(|b| format!("{:02x}", b))
+                               .collect();
+  strs.join("")
+}
+
+async fn /* shim by rleed */ screen_incoming_event(
+  event: &Event,
+  event_flags: EventFlags,
+  authorized_user: bool,
+  user: Option<Pubkey>,
+) -> Result<bool, Error> {
+  match user {
+    None => Err(ChorusError::AuthRequiredForTracking.into()),
+    Some(pubkey) => {
+      let result = original_screen_incoming_event(event, event_flags, authorized_user).await;
+      match result {
+        Ok(true) => {
+          log::info!(target: "rleed",
+            "incoming tally {} {:?}",
+            to_hex_string(pubkey.to_vec()),
+            event.len(),
+          );
+          if let Ok(mut pk_data) = get_pk_data(GLOBALS.store.get().unwrap(), pubkey) {
+            pk_data = pk_data + event.len();
+            let _ = update_pk_data(GLOBALS.store.get().unwrap(), pubkey, &pk_data);
+          }
+        }
+        _ => ()
+      }
+      result
+    }
+  }
+}
+
+pub fn /* shim by rleed */ screen_outgoing_event(
+  event: &Event,
+  event_flags: &EventFlags,
+  authorized_user: bool,
+  user: Option<Pubkey>,
+) -> bool {
+  match user {
+    None => false,
+    Some(pubkey) => {
+      let result = original_screen_outgoing_event(event, event_flags, authorized_user);
+      if result {
+        log::info!(target: "rleed",
+          "outgoing tally {} {:?}",
+          to_hex_string(pubkey.to_vec()),
+          event.len(),
+        );
+        if let Ok(mut pk_data) = get_pk_data(GLOBALS.store.get().unwrap(), pubkey) {
+          pk_data = pk_data + event.len();
+          let _ = update_pk_data(GLOBALS.store.get().unwrap(), pubkey, &pk_data);
+        }
+      }
+      result
+    }
+  }
+}
+
+async fn original_screen_incoming_event(
     event: &Event,
     event_flags: EventFlags,
     authorized_user: bool,
@@ -479,7 +549,7 @@ async fn screen_incoming_event(
     Ok(false)
 }
 
-pub fn screen_outgoing_event(
+pub fn original_screen_outgoing_event(
     event: &Event,
     event_flags: &EventFlags,
     authorized_user: bool,
