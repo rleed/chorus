@@ -7,6 +7,7 @@ use hyper::Request;
 use pocket_types::Event;
 use secp256k1::hashes::{sha256, Hash};
 use serde_json::Value;
+use crate::VerifyExt;
 
 fn s_err(s: &str) -> Result<Value, Error> {
     Err(ChorusError::ManagementAuthFailure(s.to_owned()).into())

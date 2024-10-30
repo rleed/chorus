@@ -7,6 +7,7 @@ use pocket_types::json::{eat_whitespace, json_unescape, verify_char};
 use pocket_types::{Event, Filter, Kind, OwnedFilter, Pubkey, Time};
 use url::Url;
 use crate::{get_pk_data, update_pk_data};
+use crate::VerifyExt;
 
 impl WebSocketService {
     pub async fn handle_nostr_message(&mut self, msg: &str) -> Result<(), Error> {
