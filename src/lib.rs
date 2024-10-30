@@ -576,7 +576,7 @@ impl VerifyExt for pocket_types::Event {
   fn verify_ext(&self) -> Result<(), pocket_types::Error> {
     let result = self.verify();
     let ret = match result {
-      Ok() => {
+      Ok(()) => {
         log::info!(target: "rleed",
           "signature passed nostr verification",
         );
