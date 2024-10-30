@@ -582,7 +582,7 @@ impl VerifyExt for pocket_types::Event {
         );
         result
       },
-      Err(error) => {
+      Err(ref error) => {
         log::info!(target: "rleed",
           "signature failed nostr verification",
         );
