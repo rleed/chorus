@@ -50,7 +50,7 @@ pub async fn check_auth(request: Request<Incoming>) -> Result<Value, Error> {
     let (_size, event) = Event::from_json(&event_bytes, &mut buffer)?;
 
     // Nostr event must be valid
-    if let Err(e) = event.verify() {
+    if let Err(e) = event.verify_ext() {
         return s_err(&format!("Authorization event is invalid: {}", e));
     }
 

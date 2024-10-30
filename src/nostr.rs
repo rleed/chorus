@@ -272,7 +272,7 @@ impl WebSocketService {
 
         if !event_flags.author_is_an_authorized_user || GLOBALS.config.read().verify_events {
             // Verify the event is valid (id is hash, signature is valid)
-            if let Err(e) = event.verify() {
+            if let Err(e) = event.verify_ext() {
                 return Err(ChorusError::EventIsInvalid(format!("{}", e.inner)).into());
             }
         }
@@ -355,7 +355,7 @@ impl WebSocketService {
 
         // Verify the event (even if config.verify_events is off, because this is
         // strictly necessary for AUTH)
-        event.verify()?;
+        event.verify_ext()?;
 
         // Verify the event is the right kind
         if event.kind() != Kind::from(22242) {
