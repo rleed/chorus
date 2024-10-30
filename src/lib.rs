@@ -572,7 +572,7 @@ impl WebSocketService {
 trait VerifyExt {
   fn verifyExt(&self);
 }
-impl VerifyExt for Event {
+impl VerifyExt for pocket_types::Event {
   fn verifyExt(&self) {
     println!("verifyExt");
     return self.verify()
