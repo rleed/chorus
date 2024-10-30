@@ -574,10 +574,21 @@ trait VerifyExt {
 }
 impl VerifyExt for pocket_types::Event {
   fn verify_ext(&self) -> Result<(), pocket_types::Error> {
-    log::info!(target: "rleed",
-      "verify ext",
-    );
-    return self.verify()
+    let result = self.verify();
+    let ret = match result {
+      Ok() => {
+        log::info!(target: "rleed",
+          "signature passed nostr verification",
+        );
+        result
+      },
+      Err(error) => {
+        log::info!(target: "rleed",
+          "signature failed nostr verification",
+        );
+        result
+      }
+    };
   }
 }
 
