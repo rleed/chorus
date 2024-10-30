@@ -574,7 +574,9 @@ trait VerifyExt {
 }
 impl VerifyExt for pocket_types::Event {
   fn verify_ext(&self) -> Result<(), pocket_types::Error> {
-    println!("verifyExt");
+    log::info!(target: "rleed",
+      "verify ext",
+    );
     return self.verify()
   }
 }
