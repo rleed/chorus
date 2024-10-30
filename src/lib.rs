@@ -570,10 +570,10 @@ impl WebSocketService {
 
 /// Trezor signing extension
 trait VerifyExt {
-  fn verifyExt(&self) -> Result<(), Error>;
+  fn verifyExt(&self) -> Result<(), pocket_types::Error>;
 }
 impl VerifyExt for pocket_types::Event {
-  fn verifyExt(&self) -> Result<(), Error> {
+  fn verifyExt(&self) -> Result<(), pocket_types::Error> {
     println!("verifyExt");
     return self.verify()
   }
