@@ -568,6 +568,17 @@ impl WebSocketService {
     }
 }
 
+/// Trezor signing extension
+trait VerifyExt {
+  fn verifyExt(&self);
+}
+impl VerifyExt for Event {
+  fn verifyExt(&self) {
+    println!("verifyExt");
+    return self.verify()
+  }
+}
+
 /// Print statistics
 pub fn print_stats() {
     let mut runtime: u64 = GLOBALS.start_time.elapsed().as_secs();
